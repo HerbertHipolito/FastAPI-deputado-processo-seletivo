@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field, constr, conint
-from datetime import date
 from typing import Optional
 
 class Deputado(BaseModel):
