@@ -1,8 +1,8 @@
 from enum import Enum
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from datetime import date
+from pydantic import BaseModel,validator
+from datetime import date, datetime
 from typing import List
 
 from models.deputado import Deputado 
@@ -25,6 +25,7 @@ class ordemTipo(str, Enum):
     DESCENDENTE = 'desc'
 
 @app.get("/deputados")
+#achar um jeito de remover elementos nulos antes de enviar a resposta ao usuário
 def deputados(
     nome: str | None = None,
     siglaSexo: str | None = None,
@@ -39,25 +40,35 @@ def deputados(
     if itens is not None: new_url+=f'itens={itens}&'    
     if ordernar is not None: new_url+=f"ordem={ordernar.value}&"
 
-    print(new_url)
-    response = requests.get(new_url).json()['dados']
+    response = requests.get(new_url)
+    
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
+        )
+    print(response)
+    deputados_dados = response.json()['dados']
 
-    if len(response) == 0:
+    if len(deputados_dados) == 0:
         raise HTTPException(
             status_code=404, detail=f"Deputado não achado com base nos parametros passados "
         )
-    
-    for deputado in response:
+
+    for deputado in deputados_dados:
         del deputado['uri'] 
         del deputado['uriPartido']
         
     #print(response.json())
-    return response
+    return deputados_dados 
 
 @app.get("/deputados/{deputado_id}")
 def deputado(deputado_id:str)-> Deputado:
 
     response = requests.get(url+f"/{deputado_id}")
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
+        )
     if response.status_code == 404: 
         raise HTTPException(
             status_code=404, detail=f"Deputado não achado usando id {deputado_id=}"
@@ -68,13 +79,10 @@ def deputado(deputado_id:str)-> Deputado:
     #deputado_dados['idLegislatura'] = str(deputado_dados['idLegislatura'])
     deputado_dados['telefone'] = deputado_dados['gabinete']['telefone']
 
-    del deputado_dados['gabinete'] 
-    del deputado_dados['condicaoEleitoral'] 
-    del deputado_dados['descricaoStatus'] 
-    del deputado_dados['data'] 
-    del deputado_dados['nomeEleitoral'] 
-    del deputado_dados['uri'] 
-    del deputado_dados['uriPartido'] 
+    campos_para_deletar = ['gabinete','condicaoEleitoral','descricaoStatus','data','nomeEleitoral','uri','uriPartido']
+    
+    for campo in campos_para_deletar:
+        del deputado_dados[campo]
 
     return deputado_dados
 
@@ -84,21 +92,26 @@ def deputado(deputado_id:str)-> Deputado:
     # colocar o titulo
 def discursos(
     deputado_id:str,
-    dataInicio:date | None = None,
-    dataFim:date | None = None, 
+    dataInicio:str| None = '2023-01-01',
+    dataFim:str| None = None, 
     ordernar: ordemTipo | None = None,
     itens: int | None = None,
     )->List[Discurso]:
 
     parameters = ''
+    # Formata a data e hora no formato desejado
 
     if dataInicio is not None: parameters+=f'dataInicio={dataInicio}&'    
     if dataFim is not None: parameters+=f'dataFim={dataFim}&'    
     if ordernar is not None: parameters+=f'ordem={Ordernar}&'    
     if itens is not None: parameters+=f'itens={itens}&'    
-
+    
     response = requests.get(url+f"/{deputado_id}/discursos?{parameters}")
-    print(response)    
+    print(response)
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
+        )
     deputado_discursos = response.json()['dados']
 
     if len(deputado_discursos) == 0 or response.status_code == 404:
@@ -106,13 +119,15 @@ def discursos(
             status_code=404, detail=f"discusso não achado com base no id {deputado_id=}"
         )
     
-    print(deputado_discursos)
-    campos_para_deletar = ['dataHoraInicio','dataHoraFim','faseEvento','urlTexto','urlAudio','urlVideo','uriEvento']
+    campos_para_deletar = ['dataHoraFim','faseEvento','urlTexto','urlAudio','urlVideo','uriEvento']
 
     for discursos in deputado_discursos:
 
+        discursos['titulo'] = discursos['faseEvento']['titulo']
+        time_formatado = datetime.strptime(discursos['dataHoraInicio'], "%Y-%m-%dT%H:%M")
+        discursos['dataHoraInicio'] = time_formatado.strftime("%d/%m/%Y às %H:%M")
+
         for campo in campos_para_deletar:
             del discursos[campo]
-
 
     return deputado_discursos
