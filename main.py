@@ -1,12 +1,12 @@
-from enum import Enum
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel,validator
 from datetime import date, datetime
 from typing import List
 
-from models.deputado import Deputado 
-from models.discurso import Discurso
+from schemas.deputado import Deputado
+from schemas.discurso import Discurso
+from schemas.ordemTipo import ordemTipo
 
 import requests
 
@@ -19,10 +19,6 @@ app = FastAPI(
 )
 
 url = "https://dadosabertos.camara.leg.br/api/v2/deputados"
-
-class ordemTipo(str, Enum):
-    ASCENDENTE = 'asc'
-    DESCENDENTE = 'desc'
 
 @app.get("/deputados")
 #achar um jeito de remover elementos nulos antes de enviar a resposta ao usuário
@@ -75,8 +71,6 @@ def deputado(deputado_id:str)-> Deputado:
         )
     deputado_dados = response.json()['dados']['ultimoStatus']
     
-    #deputado_dados['id'] = str(deputado_dados['id'])
-    #deputado_dados['idLegislatura'] = str(deputado_dados['idLegislatura'])
     deputado_dados['telefone'] = deputado_dados['gabinete']['telefone']
 
     campos_para_deletar = ['gabinete','condicaoEleitoral','descricaoStatus','data','nomeEleitoral','uri','uriPartido']
@@ -88,11 +82,9 @@ def deputado(deputado_id:str)-> Deputado:
 
 @app.get("/deputados/{deputado_id}/discursos")
     #add um sistema de busca por frase ou palavra
-    # fazer aparecer a data que ocorreu o discurso 
-    # colocar o titulo
 def discursos(
     deputado_id:str,
-    dataInicio:str| None = '2023-01-01',
+    dataInicio:str = '2023-01-01',
     dataFim:str| None = None, 
     ordernar: ordemTipo | None = None,
     itens: int | None = None,
@@ -114,9 +106,9 @@ def discursos(
         )
     deputado_discursos = response.json()['dados']
 
-    if len(deputado_discursos) == 0 or response.status_code == 404:
+    if len(deputado_discursos) == 0:
         raise HTTPException(
-            status_code=404, detail=f"discusso não achado com base no id {deputado_id=}"
+            status_code=404, detail=f"discurso não achado com base no id {deputado_id=}"
         )
     
     campos_para_deletar = ['dataHoraFim','faseEvento','urlTexto','urlAudio','urlVideo','uriEvento']
