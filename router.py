@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException
+
 from schemas.deputado import Deputado
 from schemas.discurso import Discurso
 from schemas.ordemTipo import ordemTipo
+from schemas.despesa import Despesa
+
 from pydantic import BaseModel,validator
 from datetime import date, datetime
 from typing import List
@@ -21,12 +24,14 @@ def deputados(
     nome: str | None = None,
     siglaSexo: str | None = None,
     itens: int | None = None,
-    ordernar: ordemTipo | None = None
+    ordernar: ordemTipo | None = None,
+    idLegislatura: int | None = None
     ) -> List[Deputado]:
 
     new_url = url+'?'
 
     if nome is not None: new_url+=f'nome={nome}&'    
+    if idLegislatura is not None: new_url+=f'idLegislatura={idLegislatura}&'    
     if siglaSexo is not None: new_url+=f'siglaSexo={siglaSexo}&'    
     if itens is not None: new_url+=f'itens={itens}&'    
     if ordernar is not None: new_url+=f"ordem={ordernar.value}&"
@@ -83,6 +88,7 @@ def discursos(
     dataFim:str| None = None, 
     ordernar: ordemTipo | None = None,
     itens: int | None = None,
+    idLegislatura: int | None = None
     )->List[Discurso]:
 
     parameters = ''
@@ -90,6 +96,7 @@ def discursos(
 
     if dataInicio is not None: parameters+=f'dataInicio={dataInicio}&'    
     if dataFim is not None: parameters+=f'dataFim={dataFim}&'    
+    if idLegislatura is not None: parameters+=f'idLegislatura={idLegislatura}&'    
     if ordernar is not None: parameters+=f'ordem={ordernar.value}&'    
     if itens is not None: parameters+=f'itens={itens}&'    
     
@@ -118,3 +125,54 @@ def discursos(
             del discursos[campo]
 
     return deputado_discursos
+
+@router.get("/deputados/{deputado_id}/despesas")
+def despesas(
+    deputado_id:str,
+    cnpjCpfFornecedor:str | None = None,
+    ano:int | None = None,
+    mes:int | None = None,
+    itens:int| None = None,
+    ordernar: ordemTipo | None = None,
+    idLegislatura: int | None = None
+    ) -> List[Despesa]:
+    
+    #fazer as funções de agregação
+
+    parameters = ''    
+
+    if cnpjCpfFornecedor is not None: parameters+=f'dataInicio={cnpjCpfFornecedor }&'    
+    if idLegislatura is not None: parameters+=f'idLegislatura={idLegislatura}&'    
+    if ano is not None: parameters+=f'ano={ano}&'    
+    if mes is not None: parameters+=f'mes={mes}&'    
+    if ordernar is not None: parameters+=f'ordem={ordernar.value}&'    
+    if itens is not None: parameters+=f'itens={itens}&'    
+
+    response = requests.get(url+f"/{deputado_id}/despesas?{parameters}")
+    print(response)
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
+        )
+    print(response.json())    
+    deputado_despesas = response.json()['dados']
+
+    if len(deputado_despesas) == 0:
+        raise HTTPException(
+            status_code=403, detail=f"discurso não achado com base no id {deputado_id=}"
+        )
+    
+    campos_para_deletar = ['codDocumento','codTipoDocumento','numDocumento','valorGlosa','numRessarcimento']
+    despesas = []
+    
+    for discursos in deputado_despesas:
+
+        tempo_formatado = datetime.strptime(discursos['dataDocumento'], "%Y-%m-%d")
+        discursos['dataDocumento'] = tempo_formatado.strftime("%d/%m/%Y")
+
+        for campo in campos_para_deletar:
+            del discursos[campo]
+        
+        despesas.append(discursos)
+    
+    return despesas

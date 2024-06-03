@@ -9,7 +9,7 @@ class Deputado(BaseModel):
     siglaUf:str
     siglaPartido:str
     urlFoto:str
-    email:str 
+    email:str | None = None
     situacao:Optional[str] = None
 
 #criar uriPartido
