@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from schemas.deputado import Deputado
 from schemas.discurso import Discurso
 from schemas.ordemTipo import ordemTipo
@@ -90,7 +90,7 @@ def discursos(
 
     if dataInicio is not None: parameters+=f'dataInicio={dataInicio}&'    
     if dataFim is not None: parameters+=f'dataFim={dataFim}&'    
-    if ordernar is not None: parameters+=f'ordem={Ordernar}&'    
+    if ordernar is not None: parameters+=f'ordem={ordernar.value}&'    
     if itens is not None: parameters+=f'itens={itens}&'    
     
     response = requests.get(url+f"/{deputado_id}/discursos?{parameters}")
