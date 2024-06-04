@@ -8,6 +8,7 @@ from schemas.despesa import Despesa
 from pydantic import BaseModel,validator
 from datetime import date, datetime
 from typing import List
+from utils import filtrar_array
 
 from fastapi import FastAPI
 
@@ -81,18 +82,17 @@ def deputado(deputado_id:str)-> Deputado:
     return deputado_dados
 
 @router.get("/deputados/{deputado_id}/discursos")
-    #add um sistema de busca por frase ou palavra
 def discursos(
     deputado_id:str,
     dataInicio:str = '2022-01-01',
     dataFim:str| None = None, 
+    palavraBusca:str| None = None, 
     ordernar: ordemTipo | None = None,
     itens: int | None = None,
     idLegislatura: int | None = None
     )->List[Discurso]:
 
     parameters = ''
-    # Formata a data e hora no formato desejado
 
     if dataInicio is not None: parameters+=f'dataInicio={dataInicio}&'    
     if dataFim is not None: parameters+=f'dataFim={dataFim}&'    
@@ -101,6 +101,7 @@ def discursos(
     if itens is not None: parameters+=f'itens={itens}&'    
     
     response = requests.get(url+f"/{deputado_id}/discursos?{parameters}")
+
     print(response)
     if response.status_code == 400:
         raise HTTPException(
@@ -108,11 +109,13 @@ def discursos(
         )
     deputado_discursos = response.json()['dados']
 
+    if palavraBusca is not None: deputado_discursos = filtrar_array(deputado_discursos,palavraBusca)
+
     if len(deputado_discursos) == 0:
         raise HTTPException(
             status_code=403, detail=f"discurso não achado com base no id {deputado_id=}"
         )
-    
+
     campos_para_deletar = ['dataHoraFim','faseEvento','urlTexto','urlAudio','urlVideo','uriEvento']
 
     for discursos in deputado_discursos:
