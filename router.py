@@ -8,7 +8,7 @@ from schemas.despesa import Despesa
 from pydantic import BaseModel,validator
 from datetime import date, datetime
 from typing import List
-from utils import filtrar_array
+from utils import filtrar_array, agrupar_despesas
 
 from fastapi import FastAPI
 
@@ -140,7 +140,6 @@ def despesas(
     idLegislatura: int | None = None
     ) -> List[Despesa]:
     
-    #fazer as funções de agregação
 
     parameters = ''    
 
@@ -162,7 +161,7 @@ def despesas(
 
     if len(deputado_despesas) == 0:
         raise HTTPException(
-            status_code=403, detail=f"discurso não achado com base no id {deputado_id=}"
+            status_code=403, detail=f"despesa não achado com base no id {deputado_id=}"
         )
     
     campos_para_deletar = ['codDocumento','codTipoDocumento','numDocumento','valorGlosa','numRessarcimento']
@@ -178,4 +177,38 @@ def despesas(
         
         despesas.append(discursos)
     
+    return despesas
+
+@router.get("/deputados/{deputado_id}/despesasAgrupadas")
+def despesas_agrupadas(
+    deputado_id:str,
+    ano:int | None = None,
+    mes:int | None = None,
+    idLegislatura: int | None = None
+    ):
+    
+    #fazer as funções de agregação
+
+    parameters = ''    
+
+    if idLegislatura is not None: parameters+=f'idLegislatura={idLegislatura}&'    
+    if ano is not None: parameters+=f'ano={ano}&'    
+    if mes is not None: parameters+=f'mes={mes}&'    
+
+    response = requests.get(url+f"/{deputado_id}/despesas?{parameters}")
+    print(response)
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
+        )
+    print(response.json())    
+    deputado_despesas = response.json()['dados']
+
+    if len(deputado_despesas) == 0:
+        raise HTTPException(
+            status_code=403, detail=f"despesa não achada com base no id {deputado_id=}"
+        )
+    
+    despesas = agrupar_despesas(deputado_despesas)
+
     return despesas
