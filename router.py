@@ -17,8 +17,6 @@ import requests
 url = "https://dadosabertos.camara.leg.br/api/v2/deputados"
 router = APIRouter()
 
-#add paginacao
-
 @router.get("/deputados")
 #achar um jeito de remover elementos nulos antes de enviar a resposta ao usuário
 def deputados(
@@ -36,14 +34,14 @@ def deputados(
     if siglaSexo is not None: new_url+=f'siglaSexo={siglaSexo}&'    
     if itens is not None: new_url+=f'itens={itens}&'    
     if ordernar is not None: new_url+=f"ordem={ordernar.value}&"
-    print(new_url)
+    
     response = requests.get(new_url)
     
     if response.status_code == 400:
         raise HTTPException(
             status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
         )
-    print(response)
+    
     deputados_dados = response.json()['dados']
 
     if len(deputados_dados) == 0:
@@ -55,7 +53,6 @@ def deputados(
         del deputado['uri'] 
         del deputado['uriPartido']
         
-    #print(response.json())
     return deputados_dados 
 
 @router.get("/deputados/{deputado_id}")
@@ -102,7 +99,6 @@ def discursos(
     
     response = requests.get(url+f"/{deputado_id}/discursos?{parameters}")
 
-    print(response)
     if response.status_code == 400:
         raise HTTPException(
             status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
@@ -113,7 +109,7 @@ def discursos(
 
     if len(deputado_discursos) == 0:
         raise HTTPException(
-            status_code=403, detail=f"discurso não achado com base no id {deputado_id=}"
+            status_code=404, detail=f"discurso não achado com base no id {deputado_id=}"
         )
 
     campos_para_deletar = ['dataHoraFim','faseEvento','urlTexto','urlAudio','urlVideo','uriEvento']
@@ -140,7 +136,6 @@ def despesas(
     idLegislatura: int | None = None
     ) -> List[Despesa]:
     
-
     parameters = ''    
 
     if cnpjCpfFornecedor is not None: parameters+=f'dataInicio={cnpjCpfFornecedor }&'    
@@ -151,17 +146,17 @@ def despesas(
     if itens is not None: parameters+=f'itens={itens}&'    
 
     response = requests.get(url+f"/{deputado_id}/despesas?{parameters}")
-    print(response)
+    
     if response.status_code == 400:
         raise HTTPException(
             status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
         )
-    print(response.json())    
+    
     deputado_despesas = response.json()['dados']
 
     if len(deputado_despesas) == 0:
         raise HTTPException(
-            status_code=403, detail=f"despesa não achado com base no id {deputado_id=}"
+            status_code=404, detail=f"despesa não achado com base no id {deputado_id=}"
         )
     
     campos_para_deletar = ['codDocumento','codTipoDocumento','numDocumento','valorGlosa','numRessarcimento']
@@ -187,8 +182,6 @@ def despesas_agrupadas(
     idLegislatura: int | None = None
     ):
     
-    #fazer as funções de agregação
-
     parameters = ''    
 
     if idLegislatura is not None: parameters+=f'idLegislatura={idLegislatura}&'    
@@ -196,17 +189,17 @@ def despesas_agrupadas(
     if mes is not None: parameters+=f'mes={mes}&'    
 
     response = requests.get(url+f"/{deputado_id}/despesas?{parameters}")
-    print(response)
+    
     if response.status_code == 400:
         raise HTTPException(
             status_code=400, detail=f"Solicitação enviada pelo usuário inválida"
         )
-    print(response.json())    
+    
     deputado_despesas = response.json()['dados']
 
     if len(deputado_despesas) == 0:
         raise HTTPException(
-            status_code=403, detail=f"despesa não achada com base no id {deputado_id=}"
+            status_code=404, detail=f"despesa não achada com base no id {deputado_id=}"
         )
     
     despesas = agrupar_despesas(deputado_despesas)

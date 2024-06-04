@@ -13,6 +13,7 @@ def filtrar_array(array:List[Discurso],palavras_especial:str) -> List[Discurso]:
 def agrupar_despesas(despesas:List[Despesa]):
 
     valor_liquido_acumulado:float = 0
+    valor_documento_acumulado:float = 0
     tipo_despesa = dict()
     nome_fornecedor = dict()
     qtd_fornecedor:int = 0
@@ -21,6 +22,7 @@ def agrupar_despesas(despesas:List[Despesa]):
     for despesa in despesas:
 
         valor_liquido_acumulado += despesa['valorLiquido']
+        valor_documento_acumulado += despesa['valorDocumento']
         
         if tipo_despesa.get(despesa['tipoDespesa']) is None:
             tipo_despesa[despesa['tipoDespesa']] = despesa['valorLiquido']
@@ -36,10 +38,11 @@ def agrupar_despesas(despesas:List[Despesa]):
         url_documentos.append(despesa['urlDocumento'])
     
     despesas_agrupadas = {
-        'valorLiquidoAcumulado':valor_liquido_acumulado,
+        'valorLiquidoAcumulado':round(valor_liquido_acumulado,3),
+        'valorDocumentoAcumulado':round(valor_documento_acumulado,3),
         'despesasPorTipo':tipo_despesa,
         'despesasFornecedor':nome_fornecedor,
-        'mediaDeDespesasPorFornecedor':valor_liquido_acumulado/qtd_fornecedor,
+        'mediaDeDespesasPorFornecedor':round(valor_liquido_acumulado/qtd_fornecedor,3),
         'quantidadeFornecedores':qtd_fornecedor,
         'url_documentos':url_documentos
     }
