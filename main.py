@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException
-from router import router
+from fastapi import FastAPI
+from routers import router
 
 #api link = https://dadosabertos.camara.leg.br/swagger/api.html
 
