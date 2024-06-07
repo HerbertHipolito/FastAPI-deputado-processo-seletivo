@@ -36,7 +36,11 @@ def agrupar_despesas(despesas:List[Despesa]):
             nome_fornecedor[despesa['nomeFornecedor']] += despesa['valorLiquido']
 
         url_documentos.append(despesa['urlDocumento'])
-    
+
+    #arredondando somas 
+    for key in tipo_despesa.keys(): tipo_despesa[key] = round(tipo_despesa[key],3)
+    for key in nome_fornecedor.keys(): nome_fornecedor[key] = round(nome_fornecedor[key],3)
+
     despesas_agrupadas = {
         'valorLiquidoAcumulado':round(valor_liquido_acumulado,3),
         'valorDocumentoAcumulado':round(valor_documento_acumulado,3),

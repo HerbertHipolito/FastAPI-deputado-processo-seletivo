@@ -1,21 +1,18 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from schemas.deputado import Deputado
+from schemas.deputadoCompleto import DeputadoCompleto
 from schemas.discurso import Discurso
 from schemas.ordemTipo import ordemTipo
 from schemas.despesa import Despesa
 
 from controllers.utils import solicitacao_erro, entidade_nao_encontrada
 
-from pydantic import BaseModel,validator
-from datetime import date, datetime
 from typing import List
 from utils import filtrar_array, agrupar_despesas
-
-from fastapi import FastAPI
+from datetime import datetime
 
 import requests
-import httpx
 
 url = "https://dadosabertos.camara.leg.br/api/v2/deputados"
 router = APIRouter()
@@ -24,7 +21,7 @@ router = APIRouter()
     summary="Dados dos deputados federais",
     description="Retorna dados dos deputados federais com base em um lista de parametros. Se nenhum parametro é passado, será retornado os deptuados em exercicio"
 )
-async def deputados(
+def deputados(
     nome: str | None = Query(None, title="Nome do deputado", description="Procura o deputado com base no nome. Não precisa ser nome completo "),
     siglaSexo: str | None = Query(None, description="Sexo do deputado a ser achado. f ou m"),
     itens: int | None = Query(None, description="Numero de itens (deputados no caso) a ser retornado"),
@@ -40,24 +37,22 @@ async def deputados(
     if itens is not None: new_url+=f'itens={itens}&'    
     if ordernar is not None: new_url+=f"ordem={ordernar.value}&"
     
-    # response = requests.get(new_url)
-    async with httpx.AsyncClient() as client:
-        response = await client.get(new_url)
-    
-        solicitacao_erro(response.status_code)
-        deputados_dados = response.json()['dados']
-        entidade_nao_encontrada(deputados_dados,'Deputados')
+    response = requests.get(new_url)
 
-        for deputado in deputados_dados:
-            del deputado['uri'] 
-            del deputado['uriPartido']
-            
-        return deputados_dados 
+    solicitacao_erro(response.status_code)
+    deputados_dados = response.json()['dados']
+    entidade_nao_encontrada(deputados_dados,'Deputados')
+    
+    for deputado in deputados_dados:
+        del deputado['uri'] 
+        del deputado['uriPartido']
+        
+    return deputados_dados 
 
 @router.get("/deputados/{deputado_id}",
     description="Retorna o deputado que corresponde ao id passado"
 )
-def deputado(deputado_id:str)-> Deputado:
+def deputado(deputado_id:str)-> DeputadoCompleto:
 
     response = requests.get(url+f"/{deputado_id}")
 
@@ -68,9 +63,16 @@ def deputado(deputado_id:str)-> Deputado:
             status_code=404, detail=f"Deputado não achado com base no parametro passado"
         )
 
-    deputado_dados = response.json()['dados']['ultimoStatus']
+    todos_dados = response.json()['dados']
+    deputado_dados = todos_dados['ultimoStatus']
     
-    deputado_dados['telefone'] = deputado_dados['gabinete']['telefone']
+    deputado_dados['telefone'] = todos_dados['ultimoStatus']['gabinete']['telefone']
+    deputado_dados['redeSocial'] = todos_dados['redeSocial']
+    deputado_dados['municipioNascimento'] = todos_dados['municipioNascimento']
+    deputado_dados['escolaridade'] = todos_dados['escolaridade']
+    deputado_dados['dataNascimento'] = todos_dados['dataNascimento']
+    deputado_dados['cpf'] = todos_dados['cpf']
+    deputado_dados['nomeCivil'] = todos_dados['nomeCivil']
 
     campos_para_deletar = ['gabinete','condicaoEleitoral','descricaoStatus','data','nomeEleitoral','uri','uriPartido']
     
